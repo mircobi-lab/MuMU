@@ -3,8 +3,14 @@
 
 MuMUProcessor::MuMUProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      state (*this, nullptr, "MuMU", mumu::createLayout())
+      state (*this, nullptr, "MuMU", mumu::createLayout()),
+      midiMap (*this, "MuMU")
 {
+    // banchi per i profili dei controller: A manopole principali, B seconda riga, C fader, D extra
+    midiMap.setBanks ({ juce::StringArray { "A_F1CUT", "A_F1RES", "A_FENVAMT", "A_DRIVE", "A_O1WAVE", "A_O2WAVE", "A_MIX2", "A_GLIDE" },
+                        juce::StringArray { "A_FA", "A_FD", "A_FS", "A_FR", "A_AA", "A_AD", "A_AS", "A_AR" },
+                        juce::StringArray { "A_MIX1", "A_MIXMO", "A_MIXRING", "A_MIXNOISE", "A_L1RATE", "A_PLAMT", "G_DLMIX", "G_MASTER" },
+                        juce::StringArray { "B_F1CUT", "B_F1RES", "B_FENVAMT", "B_LEVEL", "A_LEVEL", "G_MACRO", "G_DLFB", "G_DLTIME" } });
     reader.attach (state);
     setCurrentProgram (1);
 }
@@ -25,6 +31,7 @@ void MuMUProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
 {
     juce::ScopedNoDenormals noDenormals;
     keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
+    midiMap.process (midi);
     for (const auto meta : midi)
     {
         const auto m = meta.getMessage();
@@ -72,6 +79,8 @@ void MuMUProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
     auto st = state.copyState();
     st.setProperty ("program", currentProgram, nullptr);
+    st.removeChild (st.getChildWithName ("MIDIMAP"), nullptr);
+    st.appendChild (midiMap.toValueTree(), nullptr);
     if (auto xml = st.createXml()) copyXmlToBinary (*xml, dest);
 }
 
@@ -81,6 +90,11 @@ void MuMUProcessor::setStateInformation (const void* data, int size)
     if (! xml || ! xml->hasTagName (state.state.getType())) return;
     auto st = juce::ValueTree::fromXml (*xml);
     currentProgram = juce::jlimit (0, getNumPrograms() - 1, (int) st.getProperty ("program", 0));
+    if (auto mm = st.getChildWithName ("MIDIMAP"); mm.isValid())
+    {
+        midiMap.fromValueTree (mm);
+        st.removeChild (mm, nullptr);
+    }
     state.replaceState (st);
     if (onProgramChanged) onProgramChanged();
 }

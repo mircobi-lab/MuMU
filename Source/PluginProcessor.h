@@ -1,4 +1,5 @@
 #pragma once
+#include "MBStudioMidi.h"
 #include "Engine.h"
 #include "Presets.h"
 
@@ -36,6 +37,7 @@ public:
 
     juce::AudioProcessorValueTreeState state;
     juce::MidiKeyboardState keyboardState;
+    mbstudio::midi::MidiMapper midiMap;               // MIDI Learn e profili controller
     mumu::Synth synth;
     std::function<void()> onProgramChanged;           // per l'editor (thread dei messaggi)
     void requestPanic() noexcept { panicRequested = true; }   // MIDI PANIC, eseguito all'inizio del blocco audio

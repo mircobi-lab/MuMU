@@ -20,7 +20,8 @@ int findIndex (const std::vector<ParamDef>& defs, const juce::String& key)
 
 // ================================================================================================ pannello
 MuMUPanel::MuMUPanel (MuMUProcessor& p)
-    : proc (p), keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
+    : proc (p), keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard),
+      midiButtons (p.midiMap), midiOverlay (p.midiMap)
 {
     // riga 1: sorgenti e filtri
     addSection ("MOD OSC", true, { { "MOWAVE", "MOTRACK", "MOPITCH", "MORATE" }, { "MOAPITCH", "MOACUT", "MOAWAVE", "MOAAMP" } });
@@ -94,6 +95,8 @@ MuMUPanel::MuMUPanel (MuMUProcessor& p)
     keyboard.setLowestVisibleKey (24);
     keyboard.setWantsKeyboardFocus (false);
     addAndMakeVisible (keyboard);
+    addAndMakeVisible (midiButtons);
+    addAndMakeVisible (midiOverlay);     // per ultimo: sopra a tutto
 
     juce::Component::SafePointer<MuMUPanel> safeThis (this);
     proc.onProgramChanged = [safeThis] { juce::MessageManager::callAsync ([safeThis] { if (safeThis != nullptr) safeThis->refreshPrograms(); }); };
@@ -183,6 +186,8 @@ void MuMUPanel::reattach()
     {
         c->sa.reset(); c->ca.reset(); c->ba.reset();
         const auto id = paramID (c->timbre ? selTimbre : -1, c->index);
+        mbstudio::midi::tag (c->kind == Kind::knob ? (juce::Component&) c->slider
+                             : c->kind == Kind::combo ? (juce::Component&) c->combo : (juce::Component&) c->button, id);
         switch (c->kind)
         {
             case Kind::knob:
@@ -260,6 +265,8 @@ void MuMUPanel::resized()
     prevBtn.setBounds (1196, 74, 46, 26);
     nextBtn.setBounds (1248, 74, 46, 26);
     panicBtn.setBounds (1370, 74, 80, 26);
+    midiButtons.setBounds (850, 74, 250, 26);
+    midiOverlay.setBounds (getLocalBounds());
     meter.setBounds (1468, 18, 14, 82);
 
     // righe di sezioni: larghezza naturale + spazio residuo distribuito

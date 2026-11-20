@@ -56,6 +56,8 @@ private:
     juce::ComboBox programBox;
     mbstudio::ui::LedMeter meter { 12 };
     juce::MidiKeyboardComponent keyboard;
+    mbstudio::midi::MidiControls midiButtons;
+    mbstudio::midi::MidiLearnOverlay midiOverlay;
     juce::Rectangle<int> displayArea;
     Ctl* keyMode = nullptr;
     Ctl* splitPoint = nullptr;
