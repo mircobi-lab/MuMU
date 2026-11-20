@@ -186,6 +186,7 @@ public:
     int activeVoices() const;
     float getOutputLevel() const { return outLevel.load(); }
     void allNotesOff();
+    void panic();        // MIDI PANIC: voci spente subito, arpeggiatore, pedale e controller azzerati, delay svuotato
 
 private:
     double sr = 48000;

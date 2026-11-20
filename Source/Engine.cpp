@@ -642,6 +642,19 @@ void Synth::allNotesOff()
     arp.reset();
 }
 
+void Synth::panic()
+{
+    for (auto& v : voices) { v.kill(); v.sustained = false; }
+    for (auto& t : ts) { t.stack.clear(); t.lastPitch = -1; }
+    std::fill (std::begin (noteMask), std::end (noteMask), (uint8_t) 0);
+    arp.reset();
+    sustainPedal = false;
+    ctx.wheel = ctx.aftertouch = ctx.bend = 0;
+    delay.reset();
+    hpPrevL = hpPrevR = hpL = hpR = 0;
+    outLevel = 0;
+}
+
 Voice* Synth::findVoice (uint32_t exclude)
 {
     Voice* best = nullptr;

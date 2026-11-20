@@ -51,7 +51,8 @@ private:
     int selTimbre = 0;
     juce::String touched, touchedValue;
 
-    juce::TextButton timbreBtn[2], prevBtn { "<" }, nextBtn { ">" };
+    juce::TextButton timbreBtn[2], prevBtn { "<" }, nextBtn { ">" }, panicBtn { "PANIC" };
+    int panicFlash = 0;
     juce::ComboBox programBox;
     mbstudio::ui::LedMeter meter { 12 };
     juce::MidiKeyboardComponent keyboard;

@@ -63,6 +63,17 @@ MuMUPanel::MuMUPanel (MuMUProcessor& p)
     nextBtn.onClick = [this] { const int n = proc.getNumPrograms(); proc.setCurrentProgram ((proc.getCurrentProgram() + 1) % n); };
     addAndMakeVisible (prevBtn);
     addAndMakeVisible (nextBtn);
+    panicBtn.setTooltip ("MIDI PANIC: spegne subito tutte le note, l'arpeggiatore, il sustain e la coda del delay");
+    panicBtn.getProperties().set ("led", true);
+    panicBtn.getProperties().set ("ledColour", "ffff3b30");
+    panicBtn.onClick = [this]
+    {
+        proc.requestPanic();
+        proc.keyboardState.allNotesOff (0);
+        panicFlash = 15;
+        touched = "PANIC"; touchedValue = "TUTTE LE NOTE SPENTE";
+    };
+    addAndMakeVisible (panicBtn);
     programBox.onChange = [this]
     {
         const int id = programBox.getSelectedId();
@@ -206,6 +217,8 @@ void MuMUPanel::refreshPrograms()
 void MuMUPanel::timerCallback()
 {
     meter.setLevel (std::pow (proc.synth.getOutputLevel(), .5f));
+    if (panicFlash > 0) --panicFlash;
+    panicBtn.setToggleState (panicFlash > 0 && (panicFlash / 3) % 2 == 0, juce::dontSendNotification);
     repaint (displayArea);
 }
 
@@ -246,6 +259,7 @@ void MuMUPanel::resized()
     programBox.setBounds (1196, 38, 254, 28);
     prevBtn.setBounds (1196, 74, 46, 26);
     nextBtn.setBounds (1248, 74, 46, 26);
+    panicBtn.setBounds (1370, 74, 80, 26);
     meter.setBounds (1468, 18, 14, 82);
 
     // righe di sezioni: larghezza naturale + spazio residuo distribuito
@@ -330,7 +344,7 @@ void MuMUPanel::paint (juce::Graphics& g)
         ui::paintPrinted (g, { 1124.f, 80.f, 58.f, 14.f }, sp, 11.f, juce::Justification::centred, C::printDim);
     }
     chipAt (1196.f, 16.f, "PROGRAM");
-    ui::paintPrinted (g, { 1302.f, 76.f, 150.f, 22.f }, "FACTORY  MBSTUDIO91", 11.f, juce::Justification::centredLeft, C::printDim);
+    ui::paintPrinted (g, { 1302.f, 76.f, 64.f, 22.f }, "FACTORY", 11.f, juce::Justification::centredLeft, C::printDim);
     ui::paintEngravedLine (g, { (float) margin, 112.f }, { (float) baseW - margin, 112.f });
 
     // sezioni

@@ -39,6 +39,7 @@ void MuMUProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBu
             if (auto p = pos->getPpqPosition()) ppq = *p;
             playing = pos->getIsPlaying() && pos->getPpqPosition().hasValue() && bpm > 0;
         }
+    if (panicRequested.exchange (false)) synth.panic();
     reader.read (tv, gv);
     buffer.clear();
     synth.process (buffer, midi, tv, gv, bpm, ppq, playing);

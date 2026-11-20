@@ -38,6 +38,7 @@ public:
     juce::MidiKeyboardState keyboardState;
     mumu::Synth synth;
     std::function<void()> onProgramChanged;           // per l'editor (thread dei messaggi)
+    void requestPanic() noexcept { panicRequested = true; }   // MIDI PANIC, eseguito all'inizio del blocco audio
 
 private:
     mumu::ParamReader reader;
@@ -45,6 +46,7 @@ private:
     mumu::GlobalValues gv;
     int currentProgram = 0;
     std::atomic<int> pendingProgram { -1 };
+    std::atomic<bool> panicRequested { false };
     void handleAsyncUpdate() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MuMUProcessor)
