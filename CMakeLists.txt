@@ -59,9 +59,11 @@ mbstudio_ui_add(MBStudio91MuMU)
 target_sources(MBStudio91MuMU PRIVATE
     Source/Params.cpp
     Source/Engine.cpp
+    Source/Sequencer.cpp
     Source/Presets.cpp
     Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp)
+    Source/PluginEditor.cpp
+    Source/SeqStrip.cpp)
 
 if(TARGET MBStudio91MuMU_Standalone)
     target_sources(MBStudio91MuMU_Standalone PRIVATE Source/StandaloneApp.cpp)
@@ -89,8 +91,18 @@ target_link_libraries(MBStudio91MuMU
 option(MUMU_BUILD_TOOLS "Compila lo strumento di render di prova" OFF)
 if(MUMU_BUILD_TOOLS)
     juce_add_console_app(mumu_render PRODUCT_NAME "mumu_render")
-    target_sources(mumu_render PRIVATE tools/render.cpp Source/Params.cpp Source/Engine.cpp Source/Presets.cpp)
+    target_sources(mumu_render PRIVATE tools/render.cpp Source/Params.cpp Source/Engine.cpp Source/Sequencer.cpp Source/Presets.cpp)
     target_include_directories(mumu_render PRIVATE Source)
     target_compile_definitions(mumu_render PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(mumu_render PRIVATE juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# prove automatiche del sequencer (girano anche su GitHub Actions)
+option(MUMU_BUILD_TESTS "Compila le prove del sequencer" OFF)
+if(MUMU_BUILD_TESTS OR MUMU_BUILD_TOOLS)
+    juce_add_console_app(mumu_seqtest PRODUCT_NAME "mumu_seqtest")
+    target_sources(mumu_seqtest PRIVATE tools/seq_test.cpp Source/Params.cpp Source/Engine.cpp Source/Sequencer.cpp)
+    target_include_directories(mumu_seqtest PRIVATE Source)
+    target_compile_definitions(mumu_seqtest PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    target_link_libraries(mumu_seqtest PRIVATE juce::juce_audio_processors juce::juce_dsp PUBLIC juce::juce_recommended_config_flags)
 endif()

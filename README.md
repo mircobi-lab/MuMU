@@ -21,6 +21,23 @@ Sintetizzatore polifonico analogico virtuale con pannello in stile hardware MBSt
 - Uscita con taglio dei bassi a 6 dB/ottava (80 Hz), accordatura generale (+/-100 cent) e MACRO assegnabile nella matrice.
 - 18 preset di fabbrica MBStudio91 originali, livellati a circa -22 dBFS RMS.
 
+## Sequencer
+
+Sotto le sezioni c'è un sequencer a 64 passi, costruito sul modello di quello del Muse.
+
+- **8 sequenze** (SEQ 1-8), separate dalla patch: cambiare preset non le tocca. Si salvano col progetto della DAW. SEQ 1 parte con un giro di basso in Do minore, le altre sono vuote.
+- Ogni passo tiene **fino a 6 note** (un accordo), con velocity, gate (5-100% del passo), probabilità (0-100%), legatura (TIE) e il timbro che suona: quello del KEY MODE, solo A, solo B, oppure A+B.
+- **LENGTH** da 1 a 64 passi, quattro pagine da 16 (1-16, 17-32, 33-48, 49-64). Con FOLLOW acceso la pagina segue il passo che suona.
+- **RATE** come l'arpeggiatore (da 1/4 a 1/32, anche terzine) e **SWING** dal 50% (dritto) al 75%.
+- **PLAY** avvia e ferma. In una DAW che suona segue tempo e posizione del progetto e, se il progetto salta (loop, riavvolgimento), riparte dal passo giusto senza note appese. Senza DAW che suona usa il TEMPO interno.
+- **KEYS**: con PLAY la tastiera suona sopra la sequenza; con TRANSPOSE il tasto suonato sposta la sequenza rispetto a C3 e non suona.
+- **REC con il sequencer in moto**: la nota o l'accordo suonato sostituisce il passo acceso; tenendo premuto, la nota si lega sui passi successivi.
+- **REC da fermo**: registrazione passo passo. Il LED rosso segna il passo su cui scrivi; quando lasci tutti i tasti va al successivo. REST lascia un passo vuoto e va avanti.
+- Sulla griglia: clic seleziona il passo e lo mostra nell'editor sotto, doppio clic accende o spegne il passo, trascinare in verticale cambia la velocity, la rotella traspone (con SHIFT di un'ottava), clic destro apre il menu (svuota, copia, incolla, legatura, cursore di registrazione, fine della sequenza). SHIFT + clic sposta il cursore di registrazione. CLEAR svuota la sequenza solo con SHIFT premuto, per non farlo per sbaglio.
+- PANIC ferma anche il sequencer.
+
+Non ci sono ancora, rispetto allo strumento di riferimento: concatenare le sequenze, registrare i movimenti delle manopole nei passi, i banchi da 16 sequenze.
+
 ## Pannello
 
 - TIMBRE SELECT (A/B): sceglie quale timbro stai modificando. LED e manopole sono blu per A e verdi per B. I comandi con il LED ambra sono globali (arpeggiatore, delay, volume, macro, accordatura, key mode).
@@ -35,9 +52,11 @@ Sintetizzatore polifonico analogico virtuale con pannello in stile hardware MBSt
 - Autooscillazione dei filtri con key track al 100%: intonata entro 11 cent su C3, C4 e C5.
 - pluginval a strictness 10 superato (VST3, Linux).
 
+Il sequencer ha le sue prove automatiche (`tools/seq_test.cpp`, eseguite da GitHub a ogni aggiornamento): tempi dei passi al campione, gate, legature, swing, lunghezza, probabilità, timbro per passo, sincronia con la DAW e salto di posizione, trasposizione, registrazione passo passo e dal vivo, salvataggio, e risultato identico con blocchi audio di qualsiasi misura.
+
 ## Limiti attuali (prototipo 0.1)
 
-- Sequencer a 64 passi, memoria degli accordi e Coin Toss non ci sono ancora; c'è solo l'arpeggiatore.
+- Memoria degli accordi e Coin Toss non ci sono ancora. Del sequencer mancano la concatenazione delle sequenze e la registrazione dei parametri.
 - La matrice ha 8 slot invece di 16 e mancano le funzioni matematiche sulle sorgenti.
 - Oscillatori e filtri lavorano senza sovracampionamento: sulle note più acute, con forme d'onda brillanti, un po' di aliasing si sente.
 - I tempi degli inviluppi, la curva del drive e il carattere del delay sono tarati a orecchio. Non sono misurati su uno strumento reale.

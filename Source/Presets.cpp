@@ -150,7 +150,8 @@ void applyPreset (juce::AudioProcessorValueTreeState& state, const Preset& p)
 {
     for (auto* rp : state.processor.getParameters())
         if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (rp))
-            r->setValueNotifyingHost (r->getDefaultValue());
+            if (! r->getParameterID().startsWith ("G_SEQ"))        // il sequencer non dipende dalla patch
+                r->setValueNotifyingHost (r->getDefaultValue());
     for (auto& kv : p.values)
         if (auto* r = state.getParameter (kv.first))
             r->setValueNotifyingHost (r->convertTo0to1 (kv.second));

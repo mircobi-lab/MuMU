@@ -8,7 +8,8 @@ namespace
 {
 constexpr int rowH = 88, chipH = 20, margin = 14, sectionGap = 22, ctlGap = 4;
 constexpr int rowY[3] = { 124, 336, 548 };
-constexpr int keyboardY = 772;
+constexpr int seqY = 772, seqH = 128;
+constexpr int keyboardY = 930;
 
 int findIndex (const std::vector<ParamDef>& defs, const juce::String& key)
 {
@@ -21,7 +22,7 @@ int findIndex (const std::vector<ParamDef>& defs, const juce::String& key)
 // ================================================================================================ pannello
 MuMUPanel::MuMUPanel (MuMUProcessor& p)
     : proc (p), keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard),
-      midiButtons (p.midiMap), midiOverlay (p.midiMap)
+      midiButtons (p.midiMap), midiOverlay (p.midiMap), seqStrip (p)
 {
     // riga 1: sorgenti e filtri
     addSection ("MOD OSC", true, { { "MOWAVE", "MOTRACK", "MOPITCH", "MORATE" }, { "MOAPITCH", "MOACUT", "MOAWAVE", "MOAAMP" } });
@@ -48,6 +49,16 @@ MuMUPanel::MuMUPanel (MuMUProcessor& p)
         matrix[s][1] = makeCtl ("M" + n + "DST", true, "MOD " + n);
         matrix[s][2] = makeCtl ("M" + n + "AMT", true, "MOD " + n);
         matrix[s][2]->small = true;
+    }
+    // sequencer: prima la striscia, poi i comandi-parametro sopra di lei
+    addAndMakeVisible (seqStrip);
+    seqStrip.onTouch = [this] (const juce::String& w, const juce::String& v) { touched = w; touchedValue = v; repaint (displayArea); };
+    {
+        const char* keys[6] = { "SEQON", "SEQREC", "SEQSLOT", "SEQRATE", "SEQKEY", "SEQSWING" };
+        for (int i = 0; i < 6; ++i) seqCtl[i] = makeCtl (keys[i], false, "SEQUENCER");
+        seqCtl[0]->button.setTooltip ("Avvia e ferma il sequencer. In una DAW segue il tempo e la posizione del progetto");
+        seqCtl[1]->button.setTooltip ("Registra: in moto sostituisce il passo acceso (tieni premuto per legare), da fermo scrive passo passo");
+        seqCtl[4]->combo.setTooltip ("PLAY: la tastiera suona sopra la sequenza. TRANSPOSE: il tasto suonato traspone la sequenza rispetto a C3");
     }
     keyMode = makeCtl ("KEYMODE", false, "PATCH");
     splitPoint = makeCtl ("SPLIT", false, "PATCH");
@@ -204,6 +215,8 @@ void MuMUPanel::reattach()
                 break;
         }
     }
+    if (seqCtl[1] != nullptr) seqCtl[1]->button.getProperties().set ("ledColour", "ffff3b30");
+    if (seqCtl[0] != nullptr) seqCtl[0]->button.getProperties().set ("ledColour", "ff3ee05c");
     for (int t = 0; t < 2; ++t) timbreBtn[t].setToggleState (selTimbre == t, juce::dontSendNotification);
     touched.clear();
     repaint();
@@ -306,6 +319,19 @@ void MuMUPanel::resized()
         for (int k = 0; k < 3; ++k) matrix[s][k]->cell = {};
     }
     layoutRow (11, 3, rowY[2], matrixArea.getWidth());
+
+    // sequencer
+    seqStrip.setBounds (margin, seqY, baseW - 2 * margin, seqH);
+    {
+        const int x0 = margin, y0 = seqY;
+        seqCtl[0]->button.setBounds (x0, y0 + 34, 62, 28);
+        seqCtl[1]->button.setBounds (x0 + 66, y0 + 34, 62, 28);
+        seqCtl[2]->combo.setBounds (x0 + 132, y0 + 35, 88, 26);
+        seqCtl[3]->combo.setBounds (x0 + 224, y0 + 35, 70, 26);
+        seqCtl[4]->combo.setBounds (x0 + 298, y0 + 35, 100, 26);
+        seqCtl[5]->slider.setBounds (x0 + 402, y0 + 30, 40, 40);
+        for (auto* c : seqCtl) c->cell = {};
+    }
 
     keyboard.setBounds (margin, keyboardY, baseW - 2 * margin, baseH - keyboardY - 12);
     keyboard.setKeyWidth ((float) (baseW - 2 * margin) / 50.f);
@@ -410,8 +436,8 @@ void MuMUPanel::paint (juce::Graphics& g)
 
     // logo impresso in basso a destra (sopra la tastiera)
     ui::paintLogo (g, { (float) baseW - 260.f, (float) keyboardY - 22.f, 246.f, 16.f }, false, ui::Imprint::debossed, juce::Justification::centredRight);
-    ui::paintPrinted (g, { (float) margin, (float) keyboardY - 22.f, 700.f, 16.f },
-                      "MOD WHEEL = VIBRATO DEPTH   -   DOUBLE CLICK A KNOB TO RESET   -   AMBER = GLOBAL", 11.f, juce::Justification::centredLeft, C::printDim);
+    ui::paintPrinted (g, { (float) margin, (float) keyboardY - 22.f, 1180.f, 16.f },
+                      "MOD WHEEL = VIBRATO DEPTH   -   DOUBLE CLICK A KNOB TO RESET   -   AMBER = GLOBAL   -   SEQUENCER: DOUBLE CLICK = NOTE ON/OFF, DRAG = VELOCITY, WHEEL = TRANSPOSE, RIGHT CLICK = MENU", 11.f, juce::Justification::centredLeft, C::printDim);
 }
 
 // ================================================================================================ editor

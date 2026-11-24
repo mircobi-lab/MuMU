@@ -622,6 +622,8 @@ void Synth::prepare (double sampleRate, int maxBlock)
     for (int i = 0; i < numVoices; ++i) { voices[i].kill(); voices[i].index = i; }
     delay.prepare (sr);
     arp.reset();
+    seq.prepare (sr);
+    seqEvents.reserve (64);
     for (auto& t : ts) { t.stack.clear(); t.mode = -1; t.lastPitch = -1; }
     std::fill (std::begin (noteMask), std::end (noteMask), 0);
     hpPrevL = hpPrevR = hpL = hpR = 0;
@@ -648,6 +650,7 @@ void Synth::panic()
     for (auto& t : ts) { t.stack.clear(); t.lastPitch = -1; }
     std::fill (std::begin (noteMask), std::end (noteMask), (uint8_t) 0);
     arp.reset();
+    seq.reset();
     sustainPedal = false;
     ctx.wheel = ctx.aftertouch = ctx.bend = 0;
     delay.reset();
@@ -761,10 +764,11 @@ void Synth::timbreNoteOff (int tm, int note, const TimbreValues& tv)
             }
 }
 
-void Synth::noteOn (int note, float vel, const TimbreValues (&t)[2], const GlobalValues& gv)
+void Synth::noteOn (int note, float vel, const TimbreValues (&t)[2], const GlobalValues& gv, int forceMask)
 {
     uint8_t mask = 1;
-    switch (gv.i (KEYMODE))
+    if (forceMask > 0) mask = (uint8_t) (forceMask & 3);
+    else switch (gv.i (KEYMODE))
     {
         case 1: mask = 2; break;
         case 2: mask = 3; break;
@@ -790,9 +794,9 @@ void Synth::sustainOff()
         if (v.sustained) { v.sustained = false; v.release(); }
 }
 
-void Synth::handleMidi (const juce::MidiMessage& m, const TimbreValues (&t)[2], const GlobalValues& gv)
+void Synth::handleMidi (const juce::MidiMessage& m, const TimbreValues (&t)[2], const GlobalValues& gv, int forceMask)
 {
-    if (m.isNoteOn()) noteOn (m.getNoteNumber(), m.getFloatVelocity(), t, gv);
+    if (m.isNoteOn()) noteOn (m.getNoteNumber(), m.getFloatVelocity(), t, gv, forceMask);
     else if (m.isNoteOff()) noteOff (m.getNoteNumber(), t);
     else if (m.isPitchWheel()) ctx.bend = juce::jlimit (-1.f, 1.f, (float) (m.getPitchWheelValue() - 8192) / 8191.f);
     else if (m.isChannelPressure()) ctx.aftertouch = (float) m.getChannelPressureValue() / 127.f;
@@ -847,9 +851,12 @@ void Synth::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& m
 
     // eventi: MIDI diretto o passato dall'arpeggiatore
     const bool arpOn = gv.b (ARPON), latch = gv.b (ARPLATCH);
-    std::vector<std::pair<int, juce::MidiMessage>> events;
+    struct Event { int first; juce::MidiMessage second; int mask; };
+    std::vector<Event> events;
     events.reserve (64);
     arpEvents.clear();
+    seqEvents.clear();
+    const bool seqActive = gv.b (SEQON) || gv.b (SEQREC);
     if (arpWasOn && ! arpOn) { arp.stopAll (arpEvents, 0); arp.reset(); }
     if (latchWasOn && ! latch) arp.latchReleased();
     latchWasOn = latch;
@@ -858,13 +865,15 @@ void Synth::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& m
     {
         const auto m = meta.getMessage();
         const int off = juce::jlimit (0, n - 1, meta.samplePosition);
+        if (seqActive && m.isNoteOn() && seq.keyOn (m.getNoteNumber(), m.getFloatVelocity(), gv)) continue;
+        if (seqActive && m.isNoteOff() && seq.keyOff (m.getNoteNumber(), gv)) continue;
         if (arpOn && (m.isNoteOn() || m.isNoteOff()))
         {
             if (! arpWasOn) { for (auto& v : voices) v.release(); }
             if (m.isNoteOn()) arp.noteOn (m.getNoteNumber(), m.getFloatVelocity(), latch);
             else arp.noteOff (m.getNoteNumber(), latch);
         }
-        else events.push_back ({ off, m });
+        else events.push_back ({ off, m, 0 });
     }
     if (arpOn) arp.process (n, gv, sr, ctx.bpm, ppq, hostPlaying, arpEvents);
     arpWasOn = arpOn;
@@ -872,7 +881,14 @@ void Synth::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& m
     {
         const int off = juce::jlimit (0, n - 1, e.offset);
         events.push_back ({ off, e.vel > 0.f ? juce::MidiMessage::noteOn (1, e.note, juce::jlimit (0.01f, 1.f, e.vel))
-                                             : juce::MidiMessage::noteOff (1, e.note) });
+                                             : juce::MidiMessage::noteOff (1, e.note), 0 });
+    }
+    seq.process (n, gv, ctx.bpm, ppq, hostPlaying, seqEvents);
+    for (auto& e : seqEvents)
+    {
+        const int off = juce::jlimit (0, n - 1, e.offset);
+        events.push_back ({ off, e.vel > 0.f ? juce::MidiMessage::noteOn (1, e.note, juce::jlimit (0.01f, 1.f, e.vel))
+                                             : juce::MidiMessage::noteOff (1, e.note), e.mask });
     }
     std::stable_sort (events.begin(), events.end(), [] (auto& a, auto& b)
     {
@@ -885,7 +901,7 @@ void Synth::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& m
     {
         renderVoices (pos, e.first - pos, t);
         pos = std::max (pos, e.first);
-        handleMidi (e.second, t, gv);
+        handleMidi (e.second, t, gv, e.mask);
     }
     renderVoices (pos, n - pos, t);
 

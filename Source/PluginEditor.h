@@ -1,6 +1,7 @@
 #pragma once
 #include "PluginProcessor.h"
 #include "MBStudioLookAndFeel.h"
+#include "SeqStrip.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 
 // Pannello frontale di MuMU: una manopola per funzione, sezioni incise con titolo-chip, grafica MBStudio91.
@@ -13,7 +14,7 @@ public:
     void resized() override;
     void refreshPrograms();
 
-    static constexpr int baseW = 1500, baseH = 890;
+    static constexpr int baseW = 1500, baseH = 1048;
 
 private:
     enum class Kind { knob, combo, toggle };
@@ -59,6 +60,8 @@ private:
     mbstudio::midi::MidiControls midiButtons;
     mbstudio::midi::MidiLearnOverlay midiOverlay;
     juce::Rectangle<int> displayArea;
+    SeqStrip seqStrip;
+    Ctl* seqCtl[6] {};               // PLAY, REC, SEQUENCE, RATE, KEYS, SWING
     Ctl* keyMode = nullptr;
     Ctl* splitPoint = nullptr;
 

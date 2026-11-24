@@ -1,5 +1,6 @@
 #pragma once
 #include "Params.h"
+#include "Sequencer.h"
 
 /*  Motore audio di MBStudio91 MuMU.
     Struttura ispirata all'architettura del Moog Muse descritta nella recensione di Sound On Sound:
@@ -186,7 +187,8 @@ public:
     int activeVoices() const;
     float getOutputLevel() const { return outLevel.load(); }
     void allNotesOff();
-    void panic();        // MIDI PANIC: voci spente subito, arpeggiatore, pedale e controller azzerati, delay svuotato
+    void panic();        // MIDI PANIC: voci spente subito, arpeggiatore, sequencer, pedale e controller azzerati, delay svuotato
+    Sequencer seq;       // sequencer a 64 passi (dati letti e scritti anche dall'interfaccia)
 
 private:
     double sr = 48000;
@@ -196,6 +198,7 @@ private:
     dsp::DiffusionDelay delay;
     std::vector<float> busL, busR;
     std::vector<Arp::Ev> arpEvents;
+    std::vector<Sequencer::Ev> seqEvents;
 
     struct TimbreState { std::vector<std::pair<int, float>> stack; int mode = -1; float lastPitch = -1; };
     TimbreState ts[2];
@@ -207,8 +210,8 @@ private:
     std::atomic<float> outLevel { 0 };
     bool latchWasOn = false;
 
-    void handleMidi (const juce::MidiMessage&, const TimbreValues (&t)[2], const GlobalValues&);
-    void noteOn (int note, float vel, const TimbreValues (&t)[2], const GlobalValues&);
+    void handleMidi (const juce::MidiMessage&, const TimbreValues (&t)[2], const GlobalValues&, int forceMask = 0);
+    void noteOn (int note, float vel, const TimbreValues (&t)[2], const GlobalValues&, int forceMask = 0);
     void noteOff (int note, const TimbreValues (&t)[2]);
     void sustainOff();
     void timbreNoteOn (int tm, int note, float vel, const TimbreValues&);

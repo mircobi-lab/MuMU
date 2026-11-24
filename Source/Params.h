@@ -114,7 +114,13 @@
     X (MACRO,    "MACRO",   "Macro",             "MACRO",    R, 0, 1, 0, 0,   "", "%") \
     X (TUNE,     "TUNE",    "Master Tune",       "TUNE",     R, -100, 100, 0, 0, "", "ct") \
     X (LOWCUT,   "LOWCUT",  "Low Cut",           "LOW CUT",  T, 0, 1, 1, 0,   "", "") \
-    X (MASTER,   "MASTER",  "Master Volume",     "VOLUME",   R, -60, 6, -9, 0, "", "dB")
+    X (MASTER,   "MASTER",  "Master Volume",     "VOLUME",   R, -60, 6, -9, 0, "", "dB") \
+    X (SEQON,    "SEQON",   "Sequencer Play",    "PLAY",     T, 0, 1, 0, 0,   "", "") \
+    X (SEQREC,   "SEQREC",  "Sequencer Record",  "REC",      T, 0, 1, 0, 0,   "", "") \
+    X (SEQSLOT,  "SEQSLOT", "Sequence",          "SEQUENCE", C, 0, 7, 0, 0,   "SEQ 1|SEQ 2|SEQ 3|SEQ 4|SEQ 5|SEQ 6|SEQ 7|SEQ 8", "") \
+    X (SEQRATE,  "SEQRATE", "Sequencer Rate",    "RATE",     C, 0, 5, 3, 0,   "1/4|1/8|1/8T|1/16|1/16T|1/32", "") \
+    X (SEQSWING, "SEQSWING","Sequencer Swing",   "SWING",    R, .5f, .75f, .5f, 0, "", "%") \
+    X (SEQKEY,   "SEQKEY",  "Sequencer Keys",    "KEYS",     C, 0, 1, 0, 0,   "PLAY|TRANSPOSE", "")
 
 namespace mumu
 {
