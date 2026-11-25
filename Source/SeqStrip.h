@@ -41,7 +41,9 @@ private:
 
     juce::TextButton pageBtn[4], followBtn { "FOLLOW" }, clearBtn { "CLEAR" }, restBtn { "REST" },
                      copyBtn { "COPY" }, pasteBtn { "PASTE" }, tieBtn { "TIE" },
-                     noteDn { "-1" }, noteUp { "+1" }, octDn { "-OCT" }, octUp { "+OCT" };
+                     noteDn { "-1" }, noteUp { "+1" }, octDn { "-OCT" }, octUp { "+OCT" },
+                     chainAddBtn { "+ SEQ" }, chainDelBtn { "DEL" }, chainClrBtn { "CLR" };
+    juce::String chainText() const;
     juce::Slider lengthKnob, velKnob, gateKnob, probKnob;
     juce::ComboBox timbreBox;
     bool updating = false;

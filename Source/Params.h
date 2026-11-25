@@ -85,6 +85,14 @@
     X (M6SRC, "M6SRC", "Mod 6 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M6DST, "M6DST", "Mod 6 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M6AMT, "M6AMT", "Mod 6 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
     X (M7SRC, "M7SRC", "Mod 7 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M7DST, "M7DST", "Mod 7 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M7AMT, "M7AMT", "Mod 7 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
     X (M8SRC, "M8SRC", "Mod 8 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M8DST, "M8DST", "Mod 8 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M8AMT, "M8AMT", "Mod 8 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M9SRC, "M9SRC", "Mod 9 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M9DST, "M9DST", "Mod 9 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M9AMT, "M9AMT", "Mod 9 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M10SRC, "M10SRC", "Mod 10 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M10DST, "M10DST", "Mod 10 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M10AMT, "M10AMT", "Mod 10 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M11SRC, "M11SRC", "Mod 11 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M11DST, "M11DST", "Mod 11 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M11AMT, "M11AMT", "Mod 11 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M12SRC, "M12SRC", "Mod 12 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M12DST, "M12DST", "Mod 12 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M12AMT, "M12AMT", "Mod 12 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M13SRC, "M13SRC", "Mod 13 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M13DST, "M13DST", "Mod 13 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M13AMT, "M13AMT", "Mod 13 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M14SRC, "M14SRC", "Mod 14 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M14DST, "M14DST", "Mod 14 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M14AMT, "M14AMT", "Mod 14 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M15SRC, "M15SRC", "Mod 15 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M15DST, "M15DST", "Mod 15 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M15AMT, "M15AMT", "Mod 15 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
+    X (M16SRC, "M16SRC", "Mod 16 Source", "SOURCE", C, 0, 12, 0, 0, MUMU_SRC, "") X (M16DST, "M16DST", "Mod 16 Destination", "DEST", C, 0, 21, 0, 0, MUMU_DST, "") X (M16AMT, "M16AMT", "Mod 16 Amount", "AMOUNT", R, -1, 1, 0, 0, "", "%") \
     X (LEVEL,    "LEVEL",   "Timbre Level",      "LEVEL",    R, 0, 1, .8f, 0, "", "%") \
     X (PAN,      "PAN",     "Timbre Pan",        "PAN",      R, -1, 1, 0, 0,  "", "%") \
     X (SPREAD,   "SPREAD",  "Voice Spread",      "SPREAD",   R, 0, 1, .35f, 0, "", "%")
@@ -120,7 +128,9 @@
     X (SEQSLOT,  "SEQSLOT", "Sequence",          "SEQUENCE", C, 0, 7, 0, 0,   "SEQ 1|SEQ 2|SEQ 3|SEQ 4|SEQ 5|SEQ 6|SEQ 7|SEQ 8", "") \
     X (SEQRATE,  "SEQRATE", "Sequencer Rate",    "RATE",     C, 0, 5, 3, 0,   "1/4|1/8|1/8T|1/16|1/16T|1/32", "") \
     X (SEQSWING, "SEQSWING","Sequencer Swing",   "SWING",    R, .5f, .75f, .5f, 0, "", "%") \
-    X (SEQKEY,   "SEQKEY",  "Sequencer Keys",    "KEYS",     C, 0, 1, 0, 0,   "PLAY|TRANSPOSE", "")
+    X (SEQKEY,   "SEQKEY",  "Sequencer Keys",    "KEYS",     C, 0, 1, 0, 0,   "PLAY|TRANSPOSE", "") \
+    X (SEQCHAIN, "SEQCHAIN","Sequence Chain",    "CHAIN",    T, 0, 1, 0, 0,   "", "") \
+    X (CHORDON,  "CHORDON", "Chord Memory",      "CHORD",    T, 0, 1, 0, 0,   "", "")
 
 namespace mumu
 {

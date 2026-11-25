@@ -32,6 +32,11 @@ struct SeqData
     static constexpr int numSlots = 8, numSteps = 64;
     SeqStep step[numSlots][numSteps];
     std::atomic<int> length[numSlots];
+    // catena: fino a 16 sequenze suonate una dopo l'altra, ognuna per tutta la sua lunghezza
+    static constexpr int maxChain = 16;
+    std::atomic<int> chain[maxChain] {};
+    std::atomic<int> chainLen { 0 };
+    bool chainAppend (int slot) noexcept;
 
     SeqData();
     void clearSlot (int slot) noexcept;
@@ -48,6 +53,8 @@ public:
     std::atomic<int> recCursor { 0 };             // passo su cui scrive la registrazione passo passo
     std::atomic<int> transposeShown { 0 };
     std::atomic<int> editRevision { 0 };          // cresce quando la registrazione cambia un passo
+    std::atomic<int> chainPos { -1 };             // voce della catena che suona, -1 = catena spenta
+    std::atomic<int> playSlot { 0 };              // sequenza che suona (con la catena può non essere SEQUENCE)
 
     struct Ev { int offset, note; float vel; int mask; };     // vel 0 = note-off; mask 0 = segue KEY MODE, 1 A, 2 B, 3 A+B
 
@@ -65,6 +72,9 @@ private:
     long long lastK = std::numeric_limits<long long>::min();
     bool wasRunning = false, wasHost = false;
     int transpose = 0, curStep = -1, curSlot = 0;
+    int chainIdx = 0;
+    long long chainStartK = std::numeric_limits<long long>::min();
+    bool chainOn = false;
     std::vector<int> keysDown, transposeKeys;
     // registrazione
     std::vector<std::pair<int, float>> recChord;  // note tenute durante la registrazione

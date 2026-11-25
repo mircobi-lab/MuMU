@@ -82,7 +82,9 @@ void MuMUProcessor::getStateInformation (juce::MemoryBlock& dest)
     st.removeChild (st.getChildWithName ("MIDIMAP"), nullptr);
     st.appendChild (midiMap.toValueTree(), nullptr);
     st.removeChild (st.getChildWithName ("SEQDATA"), nullptr);
-    st.appendChild (synth.seq.data.toValueTree(), nullptr);
+    auto sd = synth.seq.data.toValueTree();
+    sd.setProperty ("chord", synth.chord.toString(), nullptr);
+    st.appendChild (sd, nullptr);
     if (auto xml = st.createXml()) copyXmlToBinary (*xml, dest);
 }
 
@@ -100,6 +102,7 @@ void MuMUProcessor::setStateInformation (const void* data, int size)
     if (auto sd = st.getChildWithName ("SEQDATA"); sd.isValid())
     {
         synth.seq.data.fromValueTree (sd);
+        synth.chord.fromString (sd.getProperty ("chord").toString());
         st.removeChild (sd, nullptr);
     }
     state.replaceState (st);

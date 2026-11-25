@@ -15,7 +15,8 @@ Sintetizzatore polifonico analogico virtuale con pannello in stile hardware MBSt
 - Due filtri ladder a 4 poli (24 dB/ottava) con saturazione e autooscillazione intonata: F1 passa-basso o passa-alto, F2 passa-basso. Collegamento in serie, parallelo o stereo (F1 a sinistra, F2 a destra). Con LINK il cutoff di F2 comanda entrambi e SPACING fissa la distanza in ottave: così si ottengono notch e passa-banda.
 - Inviluppi ADSR per filtro e ampiezza, con curva regolabile, loop (diventano modulatori ciclici) e ripartenza dal valore corrente.
 - Due LFO (7 forme, fino a 1 kHz, sincronizzabili al tempo, key sync, unipolari) e un LFO di pitch dedicato al vibrato, comandato anche dalla rotella.
-- MOD MATRIX con 8 slot per timbro: 12 sorgenti e 21 destinazioni, quantità bipolare.
+- MOD MATRIX con 16 slot per timbro, in due pagine (1-8 e 9-16): 12 sorgenti e 21 destinazioni, quantità bipolare. Le patch fatte prima trovano gli slot 9-16 spenti.
+- CHORD (nella sezione ARPEGGIATOR): ogni tasto suona l'accordo memorizzato, con la nota più bassa sul tasto. LEARN: tieni premute le note dell'accordo e lasciale; l'accordo resta in memoria (fino a 8 note, salvato col progetto) e CHORD si accende. Funziona anche con l'arpeggiatore, che arpeggia l'accordo.
 - Arpeggiatore: UP, DOWN, UP-DOWN, RANDOM, ORDER; da 1 a 4 ottave, valori da 1/4 a 1/32 (anche terzine), gate, latch. Segue il tempo della DAW, altrimenti usa il TEMPO interno.
 - DIFFUSION DELAY stereo con ping-pong, diffusione (8 allpass in ingresso e 6 nel ritorno), tono e CHARACTER: a destra la diffusione si fa più densa, a sinistra viene modulata da 6 LFO come un chorus.
 - Uscita con taglio dei bassi a 6 dB/ottava (80 Hz), accordatura generale (+/-100 cent) e MACRO assegnabile nella matrice.
@@ -36,7 +37,9 @@ Sotto le sezioni c'è un sequencer a 64 passi, costruito sul modello di quello d
 - Sulla griglia: clic seleziona il passo e lo mostra nell'editor sotto, doppio clic accende o spegne il passo, trascinare in verticale cambia la velocity, la rotella traspone (con SHIFT di un'ottava), clic destro apre il menu (svuota, copia, incolla, legatura, cursore di registrazione, fine della sequenza). SHIFT + clic sposta il cursore di registrazione. CLEAR svuota la sequenza solo con SHIFT premuto, per non farlo per sbaglio.
 - PANIC ferma anche il sequencer.
 
-Non ci sono ancora, rispetto allo strumento di riferimento: concatenare le sequenze, registrare i movimenti delle manopole nei passi, i banchi da 16 sequenze.
+- **CHAIN**: una catena fino a 16 sequenze, ognuna suonata per tutta la sua lunghezza e poi la successiva. **+ SEQ** aggiunge in fondo la sequenza scelta in SEQUENCE, **DEL** toglie l'ultima, **CLR** svuota. Con CHAIN acceso la griglia mostra la sequenza che sta suonando e l'intestazione la catena, con quella in corso tra parentesi quadre. In una DAW la catena riparte dall'inizio quando il progetto salta (loop o riavvolgimento). Si salva col progetto.
+
+Non ci sono ancora, rispetto allo strumento di riferimento: registrare i movimenti delle manopole nei passi, i banchi da 16 sequenze.
 
 ## Pannello
 
@@ -52,12 +55,12 @@ Non ci sono ancora, rispetto allo strumento di riferimento: concatenare le seque
 - Autooscillazione dei filtri con key track al 100%: intonata entro 11 cent su C3, C4 e C5.
 - pluginval a strictness 10 superato (VST3, Linux).
 
-Il sequencer ha le sue prove automatiche (`tools/seq_test.cpp`, eseguite da GitHub a ogni aggiornamento): tempi dei passi al campione, gate, legature, swing, lunghezza, probabilità, timbro per passo, sincronia con la DAW e salto di posizione, trasposizione, registrazione passo passo e dal vivo, salvataggio, e risultato identico con blocchi audio di qualsiasi misura.
+Il sequencer ha le sue prove automatiche (`tools/seq_test.cpp`, eseguite da GitHub a ogni aggiornamento): tempi dei passi al campione, gate, legature, swing, lunghezza, probabilità, timbro per passo, sincronia con la DAW e salto di posizione, trasposizione, registrazione passo passo e dal vivo, salvataggio, risultato identico con blocchi audio di qualsiasi misura, catena di sequenze e memoria degli accordi.
 
 ## Limiti attuali (prototipo 0.1)
 
-- Memoria degli accordi e Coin Toss non ci sono ancora. Del sequencer mancano la concatenazione delle sequenze e la registrazione dei parametri.
-- La matrice ha 8 slot invece di 16 e mancano le funzioni matematiche sulle sorgenti.
+- Coin Toss non c'è ancora. Del sequencer manca la registrazione dei parametri.
+- Nella matrice mancano le funzioni matematiche sulle sorgenti.
 - Oscillatori e filtri lavorano senza sovracampionamento: sulle note più acute, con forme d'onda brillanti, un po' di aliasing si sente.
 - I tempi degli inviluppi, la curva del drive e il carattere del delay sono tarati a orecchio. Non sono misurati su uno strumento reale.
 - Niente aftertouch polifonico né MPE (come nello strumento di riferimento).

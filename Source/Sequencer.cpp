@@ -59,6 +59,15 @@ SeqData::SeqData()
     loadDemo();
 }
 
+bool SeqData::chainAppend (int slot) noexcept
+{
+    const int n = chainLen.load();
+    if (n >= maxChain) return false;
+    chain[n].store (juce::jlimit (0, numSlots - 1, slot));
+    chainLen.store (n + 1);
+    return true;
+}
+
 void SeqData::clearSlot (int slot) noexcept
 {
     slot = juce::jlimit (0, numSlots - 1, slot);
@@ -90,6 +99,11 @@ juce::ValueTree SeqData::toValueTree() const
 {
     juce::ValueTree t ("SEQDATA");
     t.setProperty ("version", 1, nullptr);
+    {
+        juce::StringArray c;
+        for (int i = 0; i < chainLen.load(); ++i) c.add (juce::String (chain[i].load()));
+        t.setProperty ("chain", c.joinIntoString (" "), nullptr);
+    }
     for (int s = 0; s < numSlots; ++s)
     {
         juce::ValueTree st ("SEQ");
@@ -113,6 +127,13 @@ juce::ValueTree SeqData::toValueTree() const
 void SeqData::fromValueTree (const juce::ValueTree& t)
 {
     if (! t.hasType ("SEQDATA")) return;
+    {
+        auto c = juce::StringArray::fromTokens (t.getProperty ("chain").toString(), " ", "");
+        c.removeEmptyStrings();
+        int n = 0;
+        for (auto& v : c) if (n < maxChain) chain[n++].store (juce::jlimit (0, numSlots - 1, v.getIntValue()));
+        chainLen.store (n);
+    }
     for (int c = 0; c < t.getNumChildren(); ++c)
     {
         const auto st = t.getChild (c);
@@ -167,7 +188,7 @@ bool Sequencer::keyOn (int note, float vel, const GlobalValues& gv)
 {
     const bool running = gv.b (SEQON), rec = gv.b (SEQREC);
     keysDown.push_back (note);
-    const int slot = juce::jlimit (0, SeqData::numSlots - 1, gv.i (SEQSLOT));
+    const int slot = running && chainOn ? curSlot : juce::jlimit (0, SeqData::numSlots - 1, gv.i (SEQSLOT));
     if (rec)
     {
         const bool first = recChord.empty();
@@ -242,8 +263,31 @@ void Sequencer::recordLiveAdvance (int newStep)
 
 void Sequencer::trigger (long long k, int offset, double ppqAt, double beats, const GlobalValues& gv, std::vector<Ev>& out)
 {
-    const int len = juce::jlimit (1, SeqData::numSteps, data.length[curSlot].load());
-    const int s = (int) (((k % len) + len) % len);
+    int s;
+    if (chainOn)
+    {
+        // catena: ogni sequenza suona per tutta la sua lunghezza, poi tocca alla voce dopo
+        const int cl = juce::jmax (1, data.chainLen.load());
+        if (chainStartK == std::numeric_limits<long long>::min()) { chainStartK = k; chainIdx = 0; }
+        curSlot = data.chain[juce::jlimit (0, cl - 1, chainIdx)].load();
+        int len = juce::jlimit (1, SeqData::numSteps, data.length[curSlot].load());
+        if (k - chainStartK >= len)
+        {
+            chainStartK = k;
+            chainIdx = (chainIdx + 1) % cl;
+            curSlot = data.chain[chainIdx].load();
+            len = juce::jlimit (1, SeqData::numSteps, data.length[curSlot].load());
+        }
+        s = (int) (k - chainStartK);
+        chainPos = chainIdx;
+    }
+    else
+    {
+        const int len = juce::jlimit (1, SeqData::numSteps, data.length[curSlot].load());
+        s = (int) (((k % len) + len) % len);
+        chainPos = -1;
+    }
+    playSlot = curSlot;
     if (gv.b (SEQREC)) recordLiveAdvance (s);
     curStep = s;
     playStep = s;
@@ -293,10 +337,14 @@ void Sequencer::process (int n, const GlobalValues& gv, double bpm, double ppqSt
 {
     const bool running = gv.b (SEQON);
     if (! gv.b (SEQREC)) { recChord.clear(); recLiveStep = -1; }
-    curSlot = juce::jlimit (0, SeqData::numSlots - 1, gv.i (SEQSLOT));
+    const bool chainWanted = gv.b (SEQCHAIN) && data.chainLen.load() > 0;
+    if (chainWanted != chainOn) { chainOn = chainWanted; chainStartK = std::numeric_limits<long long>::min(); }
+    if (! chainOn) curSlot = juce::jlimit (0, SeqData::numSlots - 1, gv.i (SEQSLOT));
     if (! running)
     {
         if (wasRunning) { stopAll (out, 0); playStep = -1; curStep = -1; }
+        chainStartK = std::numeric_limits<long long>::min();
+        chainPos = -1;
         wasRunning = false;
         recLiveStep = -1;
         lastK = std::numeric_limits<long long>::min();
@@ -314,13 +362,14 @@ void Sequencer::process (int n, const GlobalValues& gv, double bpm, double ppqSt
         {
             stopAll (out, 0);
             lastK = std::numeric_limits<long long>::min();
+            chainStartK = std::numeric_limits<long long>::min();
         }
     }
     else
     {
         // tempo libero: posizione contata in campioni interi, così non si accumula errore
-        if (! wasRunning || wasHost) { freeBase = 0; freeSamples = 0; freeBpm = bpm; stopAll (out, 0); lastK = std::numeric_limits<long long>::min(); }
-        if (bpm != freeBpm) { freeBase += (double) freeSamples * std::max (20.0, freeBpm) / 60.0 / sr; freeSamples = 0; freeBpm = bpm; }
+        if (! wasRunning || wasHost) { freeBase = 0; freeSamples = 0; freeBpm = bpm; stopAll (out, 0); lastK = std::numeric_limits<long long>::min(); chainStartK = std::numeric_limits<long long>::min(); }
+        if (std::abs (bpm - freeBpm) > 1e-9) { freeBase += (double) freeSamples * std::max (20.0, freeBpm) / 60.0 / sr; freeSamples = 0; freeBpm = bpm; }
         p0 = freeBase + (double) freeSamples * ppqPerSample;
     }
     if (! wasRunning && hostPlaying) lastK = std::numeric_limits<long long>::min();

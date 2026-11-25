@@ -47,7 +47,12 @@ private:
     MuMUProcessor& proc;
     std::vector<std::unique_ptr<Ctl>> ctls;
     std::vector<Section> sections;
-    Ctl* matrix[8][3] {};
+    Ctl* matrix[16][3] {};
+    int matrixPage = 0;
+    Ctl* chordCtl = nullptr;
+    juce::TextButton chordLearnBtn { "LEARN" };
+    juce::TextButton matrixPageBtn[2];
+    void showMatrixPage (int);
     juce::Rectangle<int> matrixArea;
     int selTimbre = 0;
     juce::String touched, touchedValue;
@@ -61,7 +66,7 @@ private:
     mbstudio::midi::MidiLearnOverlay midiOverlay;
     juce::Rectangle<int> displayArea;
     SeqStrip seqStrip;
-    Ctl* seqCtl[6] {};               // PLAY, REC, SEQUENCE, RATE, KEYS, SWING
+    Ctl* seqCtl[7] {};               // PLAY, REC, SEQUENCE, RATE, KEYS, SWING, CHAIN
     Ctl* keyMode = nullptr;
     Ctl* splitPoint = nullptr;
 

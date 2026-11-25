@@ -70,6 +70,19 @@ SeqStrip::SeqStrip (MuMUProcessor& p) : proc (p)
     pasteBtn.onClick = [this] { pasteStep (selected); };
     for (auto* b : { &clearBtn, &restBtn, &copyBtn, &pasteBtn }) addAndMakeVisible (*b);
 
+    // catena di sequenze
+    chainAddBtn.setTooltip ("Aggiunge in fondo alla catena la sequenza scelta in SEQUENCE (fino a 16)");
+    chainAddBtn.onClick = [this]
+    {
+        const int sl = juce::jlimit (0, SeqData::numSlots - 1, (int) std::lround (proc.state.getRawParameterValue ("G_SEQSLOT")->load()));
+        touch ("CHAIN", proc.synth.seq.data.chainAppend (sl) ? chainText() : juce::String ("PIENA: 16 SEQUENZE"));
+    };
+    chainDelBtn.setTooltip ("Toglie l'ultima sequenza della catena");
+    chainDelBtn.onClick = [this] { auto& d = proc.synth.seq.data; if (d.chainLen.load() > 0) d.chainLen.fetch_sub (1); touch ("CHAIN", chainText()); };
+    chainClrBtn.setTooltip ("Svuota la catena");
+    chainClrBtn.onClick = [this] { proc.synth.seq.data.chainLen = 0; touch ("CHAIN", "VUOTA"); };
+    for (auto* b : { &chainAddBtn, &chainDelBtn, &chainClrBtn }) addAndMakeVisible (*b);
+
     // editor del passo
     setupKnob (velKnob, 1, 127, 100, 1);
     setupKnob (gateKnob, 5, 100, 60, 1);
@@ -107,7 +120,26 @@ SeqStrip::SeqStrip (MuMUProcessor& p) : proc (p)
 
 SeqStrip::~SeqStrip() { stopTimer(); }
 
-int SeqStrip::slot() const { return juce::jlimit (0, SeqData::numSlots - 1, (int) std::lround (proc.state.getRawParameterValue ("G_SEQSLOT")->load())); }
+int SeqStrip::slot() const
+{
+    // con la catena in riproduzione si vede (e si modifica) la sequenza che sta suonando
+    if (proc.synth.seq.chainPos.load() >= 0) return juce::jlimit (0, SeqData::numSlots - 1, proc.synth.seq.playSlot.load());
+    return juce::jlimit (0, SeqData::numSlots - 1, (int) std::lround (proc.state.getRawParameterValue ("G_SEQSLOT")->load()));
+}
+
+juce::String SeqStrip::chainText() const
+{
+    auto& d = proc.synth.seq.data;
+    const int n = d.chainLen.load(), cur = proc.synth.seq.chainPos.load();
+    if (n == 0) return "CHAIN VUOTA";
+    juce::String t ("CHAIN");
+    for (int i = 0; i < n; ++i)
+    {
+        const juce::String v (d.chain[i].load() + 1);
+        t << " " << (i == cur ? "[" + v + "]" : v);
+    }
+    return t;
+}
 int SeqStrip::length() const { return juce::jlimit (1, SeqData::numSteps, proc.synth.seq.data.length[slot()].load()); }
 SeqStep& SeqStrip::step (int index) const { return proc.synth.seq.data.step[slot()][juce::jlimit (0, SeqData::numSteps - 1, index)]; }
 
@@ -223,6 +255,10 @@ void SeqStrip::resized()
     restBtn.setBounds (66, 104, 62, 22);
     copyBtn.setBounds (132, 104, 62, 22);
     pasteBtn.setBounds (198, 104, 62, 22);
+    // CHAIN (parametro del pannello) sta a x 270
+    chainAddBtn.setBounds (334, 104, 54, 22);
+    chainDelBtn.setBounds (392, 104, 46, 22);
+    chainClrBtn.setBounds (442, 104, 46, 22);
 
     grid.setBounds (gridX, gridY, 16 * cellW + 15 * cellGap, cellH);
 
@@ -248,6 +284,7 @@ void SeqStrip::paint (juce::Graphics& g)
     const bool playing = seq.playStep.load() >= 0;
     const bool rec = proc.state.getRawParameterValue ("G_SEQREC")->load() > .5f;
     juce::String tag = "GLOBAL  -  " + juce::String ("SEQ ") + juce::String (slot() + 1) + "  -  " + juce::String (length()) + " STEPS";
+    if (proc.state.getRawParameterValue ("G_SEQCHAIN")->load() > .5f) tag << "  -  " << chainText();
     if (seq.transposeShown.load() != 0) tag << "  -  TRANSPOSE " << (seq.transposeShown.load() > 0 ? "+" : "") << seq.transposeShown.load();
     g.setFont (ui::Fonts::label (11.f));
     const float tw = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), tag) + 6.f;

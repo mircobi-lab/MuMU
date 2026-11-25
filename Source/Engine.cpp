@@ -396,7 +396,7 @@ void Voice::render (float* L, float* R, int n, const TimbreValues& tv, const Voi
         const float src[sCount] = { 0.f, lfoVal[0], lfoVal[1], moLast, fenv.out, aenv.out, vel, ((float) note - 60.f) / 60.f,
                                     c.wheel, c.aftertouch, c.bend, rnd * 2.f - 1.f, c.macro };
         float dst[dCount] {};
-        for (int k = 0; k < 8; ++k)
+        for (int k = 0; k < 16; ++k)
         {
             const int s = tv.i ((TP) (M1SRC + 3 * k)), d = tv.i ((TP) (M1DST + 3 * k));
             if (s > 0 && s < sCount && d > 0 && d < dCount) dst[d] += src[s] * tv[(TP) (M1AMT + 3 * k)];
@@ -651,6 +651,8 @@ void Synth::panic()
     std::fill (std::begin (noteMask), std::end (noteMask), (uint8_t) 0);
     arp.reset();
     seq.reset();
+    chord.resetLearn();
+    for (auto& p : chordPlayed) p[0] = 0;
     sustainPedal = false;
     ctx.wheel = ctx.aftertouch = ctx.bend = 0;
     delay.reset();
@@ -867,11 +869,39 @@ void Synth::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& m
         const int off = juce::jlimit (0, n - 1, meta.samplePosition);
         if (seqActive && m.isNoteOn() && seq.keyOn (m.getNoteNumber(), m.getFloatVelocity(), gv)) continue;
         if (seqActive && m.isNoteOff() && seq.keyOff (m.getNoteNumber(), gv)) continue;
-        if (arpOn && (m.isNoteOn() || m.isNoteOff()))
+        if (m.isNoteOn() || m.isNoteOff())
         {
-            if (! arpWasOn) { for (auto& v : voices) v.release(); }
-            if (m.isNoteOn()) arp.noteOn (m.getNoteNumber(), m.getFloatVelocity(), latch);
-            else arp.noteOff (m.getNoteNumber(), latch);
+            const int key = m.getNoteNumber();
+            if (chord.learn.load()) chord.learnNote (key, m.isNoteOn());
+            // memoria degli accordi: ogni tasto diventa l'accordo; al rilascio si spengono le note accese da quel tasto
+            int notes[ChordMemory::maxNotes];
+            int cnt = 0;
+            auto& played = chordPlayed[(size_t) key];
+            if (m.isNoteOn())
+            {
+                cnt = gv.b (CHORDON) && ! chord.learn.load() ? chord.expand (key, notes) : (notes[0] = key, 1);
+                played[0] = (int8_t) cnt;
+                for (int i = 0; i < cnt; ++i) played[(size_t) i + 1] = (int8_t) notes[i];
+            }
+            else
+            {
+                cnt = played[0] > 0 ? played[0] : 1;
+                if (played[0] > 0) for (int i = 0; i < cnt; ++i) notes[i] = played[(size_t) i + 1];
+                else notes[0] = key;
+                played[0] = 0;
+            }
+            for (int i = 0; i < cnt; ++i)
+            {
+                const auto mm = m.isNoteOn() ? juce::MidiMessage::noteOn (m.getChannel(), notes[i], m.getFloatVelocity())
+                                             : juce::MidiMessage::noteOff (m.getChannel(), notes[i]);
+                if (arpOn)
+                {
+                    if (! arpWasOn) { for (auto& v : voices) v.release(); }
+                    if (mm.isNoteOn()) arp.noteOn (notes[i], mm.getFloatVelocity(), latch);
+                    else arp.noteOff (notes[i], latch);
+                }
+                else events.push_back ({ off, mm, 0 });
+            }
         }
         else events.push_back ({ off, m, 0 });
     }

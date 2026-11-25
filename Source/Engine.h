@@ -1,6 +1,7 @@
 #pragma once
 #include "Params.h"
 #include "Sequencer.h"
+#include "Chord.h"
 
 /*  Motore audio di MBStudio91 MuMU.
     Struttura ispirata all'architettura del Moog Muse descritta nella recensione di Sound On Sound:
@@ -189,6 +190,8 @@ public:
     void allNotesOff();
     void panic();        // MIDI PANIC: voci spente subito, arpeggiatore, sequencer, pedale e controller azzerati, delay svuotato
     Sequencer seq;       // sequencer a 64 passi (dati letti e scritti anche dall'interfaccia)
+    ChordMemory chord;   // memoria degli accordi
+    std::array<std::array<int8_t, ChordMemory::maxNotes + 1>, 128> chordPlayed {};   // note suonate per ogni tasto (per i note-off)
 
 private:
     double sr = 48000;

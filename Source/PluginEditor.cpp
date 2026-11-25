@@ -38,11 +38,25 @@ MuMUPanel::MuMUPanel (MuMUProcessor& p)
     addSection ("PITCH LFO", true, { { "PLRATE", "PLAMT" }, { "PLWHEEL" } });
     addSection ("VOICE", true, { { "VMODE", "UNIVOX", "UNIDET", "OCT" }, { "MTRIG", "GLIDE", "GLMODE", "BEND" } });
     // riga 3: arpeggiatore, delay, uscita (la matrice è disegnata a parte)
-    addSection ("ARPEGGIATOR", false, { { "ARPON", "ARPMODE", "ARPOCT" }, { "ARPRATE", "ARPGATE", "ARPLATCH", "BPM" } });
+    addSection ("ARPEGGIATOR", false, { { "ARPON", "ARPMODE", "ARPOCT", "CHORDON" }, { "ARPRATE", "ARPGATE", "ARPLATCH", "BPM" } });
+    // memoria degli accordi: CHORD (parametro) e LEARN sotto
+    chordCtl = sections.back().rows[0][3];
+    chordCtl->button.setTooltip ("CHORD: ogni tasto suona l'accordo memorizzato, con la nota più bassa sul tasto");
+    chordLearnBtn.setTooltip ("LEARN: tieni premute le note dell'accordo e lasciale; l'accordo resta in memoria e CHORD si accende");
+    chordLearnBtn.getProperties().set ("led", true);
+    chordLearnBtn.getProperties().set ("ledColour", "ffff3b30");
+    chordLearnBtn.onClick = [this]
+    {
+        auto& ch = proc.synth.chord;
+        ch.learn = ! ch.learn.load();
+        touched = "CHORD LEARN"; touchedValue = ch.learn.load() ? juce::String ("SUONA L'ACCORDO E LASCIA I TASTI") : ch.describe();
+        repaint (displayArea);
+    };
+    addAndMakeVisible (chordLearnBtn);
     addSection ("DIFFUSION DELAY", false, { { "DLON", "DLTIME", "DLSYNC", "DLFB" }, { "DLMIX", "DLDIFF", "DLCHAR", "DLTONE", "DLPING" } });
     addSection ("OUTPUT", true, { { "LEVEL", "PAN", "SPREAD" }, { "G:MACRO", "G:TUNE", "G:MASTER", "G:LOWCUT" } });
 
-    for (int s = 0; s < 8; ++s)
+    for (int s = 0; s < 16; ++s)
     {
         const juce::String n (s + 1);
         matrix[s][0] = makeCtl ("M" + n + "SRC", true, "MOD " + n);
@@ -50,12 +64,23 @@ MuMUPanel::MuMUPanel (MuMUProcessor& p)
         matrix[s][2] = makeCtl ("M" + n + "AMT", true, "MOD " + n);
         matrix[s][2]->small = true;
     }
+    // la matrice ha 16 posti in due pagine da 8
+    for (int i = 0; i < 2; ++i)
+    {
+        matrixPageBtn[i].setButtonText (i == 0 ? "1-8" : "9-16");
+        matrixPageBtn[i].getProperties().set ("led", true);
+        matrixPageBtn[i].getProperties().set ("ledColour", "ffffb020");
+        matrixPageBtn[i].onClick = [this, i] { showMatrixPage (i); };
+        addAndMakeVisible (matrixPageBtn[i]);
+    }
+    showMatrixPage (0);
     // sequencer: prima la striscia, poi i comandi-parametro sopra di lei
     addAndMakeVisible (seqStrip);
     seqStrip.onTouch = [this] (const juce::String& w, const juce::String& v) { touched = w; touchedValue = v; repaint (displayArea); };
     {
-        const char* keys[6] = { "SEQON", "SEQREC", "SEQSLOT", "SEQRATE", "SEQKEY", "SEQSWING" };
-        for (int i = 0; i < 6; ++i) seqCtl[i] = makeCtl (keys[i], false, "SEQUENCER");
+        const char* keys[7] = { "SEQON", "SEQREC", "SEQSLOT", "SEQRATE", "SEQKEY", "SEQSWING", "SEQCHAIN" };
+        for (int i = 0; i < 7; ++i) seqCtl[i] = makeCtl (keys[i], false, "SEQUENCER");
+        seqCtl[6]->button.setTooltip ("CHAIN: suona la catena di sequenze invece di SEQUENCE; ognuna per tutta la sua lunghezza");
         seqCtl[0]->button.setTooltip ("Avvia e ferma il sequencer. In una DAW segue il tempo e la posizione del progetto");
         seqCtl[1]->button.setTooltip ("Registra: in moto sostituisce il passo acceso (tieni premuto per legare), da fermo scrive passo passo");
         seqCtl[4]->combo.setTooltip ("PLAY: la tastiera suona sopra la sequenza. TRANSPOSE: il tasto suonato traspone la sequenza rispetto a C3");
@@ -237,6 +262,14 @@ void MuMUPanel::timerCallback()
     meter.setLevel (std::pow (proc.synth.getOutputLevel(), .5f));
     if (panicFlash > 0) --panicFlash;
     panicBtn.setToggleState (panicFlash > 0 && (panicFlash / 3) % 2 == 0, juce::dontSendNotification);
+    auto& ch = proc.synth.chord;
+    chordLearnBtn.setToggleState (ch.learn.load(), juce::dontSendNotification);
+    if (ch.learnedNow.exchange (false))
+    {
+        // accordo memorizzato: CHORD si accende e il display mostra le note (sul Do)
+        if (auto* p = proc.state.getParameter ("G_CHORDON")) p->setValueNotifyingHost (1.f);
+        touched = "CHORD"; touchedValue = ch.describe();
+    }
     repaint (displayArea);
 }
 
@@ -264,6 +297,20 @@ void MuMUPanel::layoutSection (Section& s, int x, int y, int w)
             cx += c->width + gap;
         }
     }
+}
+
+void MuMUPanel::showMatrixPage (int page)
+{
+    matrixPage = juce::jlimit (0, 1, page);
+    for (int sl = 0; sl < 16; ++sl)
+    {
+        const bool vis = sl / 8 == matrixPage;
+        matrix[sl][0]->combo.setVisible (vis);
+        matrix[sl][1]->combo.setVisible (vis);
+        matrix[sl][2]->slider.setVisible (vis);
+    }
+    for (int i = 0; i < 2; ++i) matrixPageBtn[i].setToggleState (i == matrixPage, juce::dontSendNotification);
+    repaint();
 }
 
 void MuMUPanel::resized()
@@ -309,16 +356,20 @@ void MuMUPanel::resized()
 
     // riga 3: matrice di modulazione a sinistra, poi arpeggiatore, delay, uscita
     matrixArea = { margin, rowY[2], 560, chipH + 2 * rowH };
-    for (int s = 0; s < 8; ++s)
+    for (int s = 0; s < 16; ++s)
     {
-        const int col = s / 4, r = s % 4;
+        const int col = (s % 8) / 4, r = s % 4;
         const int x = matrixArea.getX() + col * 286 + 22, y = matrixArea.getY() + chipH + 20 + r * 39;
         matrix[s][0]->combo.setBounds (x, y, 96, 28);
         matrix[s][1]->combo.setBounds (x + 101, y, 114, 28);
         matrix[s][2]->slider.setBounds (x + 216, y - 4, 36, 36);
         for (int k = 0; k < 3; ++k) matrix[s][k]->cell = {};
     }
+    matrixPageBtn[0].setBounds (matrixArea.getX() + 74, matrixArea.getY() - 1, 56, 20);
+    matrixPageBtn[1].setBounds (matrixArea.getX() + 134, matrixArea.getY() - 1, 56, 20);
     layoutRow (11, 3, rowY[2], matrixArea.getWidth());
+    if (chordCtl != nullptr)
+        chordLearnBtn.setBounds (chordCtl->button.getX(), chordCtl->button.getBottom() + 5, chordCtl->button.getWidth(), 18);
 
     // sequencer
     seqStrip.setBounds (margin, seqY, baseW - 2 * margin, seqH);
@@ -330,6 +381,7 @@ void MuMUPanel::resized()
         seqCtl[3]->combo.setBounds (x0 + 224, y0 + 35, 70, 26);
         seqCtl[4]->combo.setBounds (x0 + 298, y0 + 35, 100, 26);
         seqCtl[5]->slider.setBounds (x0 + 402, y0 + 30, 40, 40);
+        seqCtl[6]->button.setBounds (x0 + 270, y0 + 104, 60, 22);
         for (auto* c : seqCtl) c->cell = {};
     }
 
@@ -422,7 +474,7 @@ void MuMUPanel::paint (juce::Graphics& g)
             g.drawText ("DESTINATION", juce::Rectangle<float> (x + 101.f, y, 114.f, 16.f), juce::Justification::centredLeft, false);
             g.drawText ("AMT", juce::Rectangle<float> (x + 210.f, y, 48.f, 16.f), juce::Justification::centred, false);
         }
-        for (int s = 0; s < 8; ++s)
+        for (int s = matrixPage * 8; s < matrixPage * 8 + 8; ++s)
         {
             const auto b = matrix[s][0]->combo.getBounds().toFloat();
             const bool live = matrix[s][0]->combo.getSelectedId() > 1 && matrix[s][1]->combo.getSelectedId() > 1 && std::abs (matrix[s][2]->slider.getValue()) > .001;

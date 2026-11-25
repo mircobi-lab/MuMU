@@ -248,6 +248,53 @@ int main()
         std::printf ("   picco %.3f\n", peak);
     }
 
+    std::printf ("10. catena di sequenze\n");
+    {
+        Sequencer s; s.prepare (sr);
+        auto g = defaults();
+        g.v[SEQON] = 1; g.v[SEQCHAIN] = 1;
+        for (int sl = 0; sl < 3; ++sl) s.data.clearSlot (sl);
+        s.data.length[0] = 2; s.data.step[0][0].add (60); s.data.step[0][1].add (61);
+        s.data.length[1] = 3; s.data.step[1][0].add (70); s.data.step[1][1].add (71); s.data.step[1][2].add (72);
+        s.data.chainLen = 0;
+        s.data.chainAppend (0); s.data.chainAppend (1); s.data.chainAppend (0);
+        auto ev = run (s, g, stepLen * 9, bpm, false);
+        std::vector<int> ons;
+        for (auto& e : ev) if (e.vel > 0) ons.push_back (e.note);
+        CHECK (ons == std::vector<int> ({ 60, 61, 70, 71, 72, 60, 61, 60, 61 }), "SEQ 1 (2 passi), SEQ 2 (3 passi), SEQ 1, poi da capo");
+        g.v[SEQCHAIN] = 0;
+        auto ev2 = run (s, g, stepLen * 2, bpm, false);
+        CHECK (s.chainPos.load() == -1, "senza CHAIN la posizione della catena si spegne");
+        SeqData copy;
+        copy.fromValueTree (s.data.toValueTree());
+        CHECK (copy.chainLen.load() == 3 && copy.chain[1].load() == 1, "la catena si salva");
+    }
+
+    std::printf ("11. memoria degli accordi\n");
+    {
+        Synth syn; syn.prepare (sr, 256);
+        TimbreValues tv[2];
+        for (int k = 0; k < 2; ++k) for (int i = 0; i < TP_COUNT; ++i) tv[k].v[i] = timbreDefs()[(size_t) i].def;
+        auto g = defaults();
+        juce::AudioBuffer<float> buf (2, 256);
+        auto block = [&] (juce::MidiBuffer m) { buf.clear(); syn.process (buf, m, tv, g, 0, 0, false); };
+        // LEARN: Do-Mi-Sol-Si
+        syn.chord.learn = true;
+        { juce::MidiBuffer m; for (int n : { 48, 52, 55, 59 }) m.addEvent (juce::MidiMessage::noteOn (1, n, (juce::uint8) 100), 0); block (m); }
+        { juce::MidiBuffer m; for (int n : { 52, 48, 59, 55 }) m.addEvent (juce::MidiMessage::noteOff (1, n), 0); block (m); }
+        CHECK (! syn.chord.learn.load() && syn.chord.count.load() == 4 && syn.chord.interval[3].load() == 11, "LEARN memorizza 0 4 7 11");
+        for (int i = 0; i < 400; ++i) { juce::MidiBuffer m; block (m); }
+        g.v[CHORDON] = 1;
+        { juce::MidiBuffer m; m.addEvent (juce::MidiMessage::noteOn (1, 62, (juce::uint8) 100), 0); block (m); }
+        CHECK (syn.activeVoices() == 4, "un tasto suona quattro note");
+        g.v[CHORDON] = 0;   // spento mentre il tasto è giù: il rilascio chiude comunque le quattro note
+        { juce::MidiBuffer m; m.addEvent (juce::MidiMessage::noteOff (1, 62), 0); block (m); }
+        for (int i = 0; i < 600; ++i) { juce::MidiBuffer m; block (m); }
+        CHECK (syn.activeVoices() == 0, "al rilascio si spengono tutte le note dell'accordo");
+        ChordMemory c2; c2.fromString (syn.chord.toString());
+        CHECK (c2.count.load() == 4 && c2.describe() == "C E G B", "l'accordo si salva");
+    }
+
     std::printf (failures == 0 ? "TUTTE LE PROVE SUPERATE\n" : "%d PROVE FALLITE\n", failures);
     return failures == 0 ? 0 : 1;
 }
